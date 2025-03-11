@@ -33,6 +33,7 @@ function deviceList(
   const [devices, setDevices] = useState<
     Array<[TransportFactory, AvailableDevice]>
   >([]);
+
   const [selectedDev, setSelectedDev] = useState(new Set<Key>());
   const [refreshing, setRefreshing] = useState(false);
 
@@ -86,43 +87,114 @@ function deviceList(
     [devices, onTransportCreated]
   );
 
+  // Get direct connection transports
+  const directTransports = transports.filter(t => t.connect);
+  const hasPickAndConnect = transports.some(t => t.pick_and_connect);
+  
+  // Find WebHID transport for the "Connect New Device" button
+  const webHidTransport = transports.find(t => t.label === "USB-HID (Web)");
+
   return (
     <div>
-      <div className="grid grid-cols-[1fr_auto]">
-        <label>Select A Device:</label>
-        <button
-          className="p-1 rounded hover:bg-base-300 disabled:bg-base-100 disabled:opacity-75"
-          disabled={refreshing}
-          onClick={onRefresh}
-        >
-          <RefreshCw
-            className={`size-5 transition-transform ${
-              refreshing ? "animate-spin" : ""
-            }`}
-          />
-        </button>
-      </div>
-      <ListBox
-        aria-label="Device"
-        items={devices}
-        onSelectionChange={onSelect}
-        selectionMode="single"
-        selectedKeys={selectedDev}
-        className="flex flex-col gap-1 pt-1"
-      >
-        {([t, d]) => (
-          <ListBoxItem
-            className="grid grid-cols-[1em_1fr] rounded hover:bg-base-300 cursor-pointer px-1"
-            id={d.id}
-            aria-label={d.label}
+      {directTransports.length > 0 && (
+        <div className="mb-4">
+          <p className="text-sm">Direct Connection:</p>
+          <ul className="flex gap-2 pt-2">
+            {directTransports.map((t) => (
+              <li key={t.label} className="list-none">
+                <button
+                  className="bg-base-300 hover:bg-primary hover:text-primary-content rounded px-2 py-1"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const transport = await t.connect?.();
+                      if (transport) {
+                        onTransportCreated(transport);
+                      }
+                    } catch (e) {
+                      console.error(e);
+                      if (e instanceof Error && !(e instanceof UserCancelledError)) {
+                        alert(e.message);
+                      }
+                    }
+                  }}
+                >
+                  {t.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {hasPickAndConnect && (
+        <div>
+          <div className="grid grid-cols-[1fr_auto]">
+            <label>Select A Device:</label>
+            <button
+              className="p-1 rounded hover:bg-base-300 disabled:bg-base-100 disabled:opacity-75"
+              disabled={refreshing}
+              onClick={onRefresh}
+            >
+              <RefreshCw
+                className={`size-5 transition-transform ${
+                  refreshing ? "animate-spin" : ""
+                }`}
+              />
+            </button>
+          </div>
+          <ListBox
+            aria-label="Device"
+            items={devices}
+            onSelectionChange={onSelect}
+            selectionMode="single"
+            selectedKeys={selectedDev}
+            className="flex flex-col gap-1 pt-1"
           >
-            {t.isWireless && (
-              <Bluetooth className="w-4 justify-center content-center h-full" />
+            {([t, d]) => (
+              <ListBoxItem
+                className="grid grid-cols-[1em_1fr] rounded hover:bg-base-300 cursor-pointer px-1"
+                id={d.id}
+                aria-label={d.label}
+              >
+                {t.isWireless && (
+                  <Bluetooth className="w-4 justify-center content-center h-full" />
+                )}
+                <span className="col-start-2">{d.label}</span>
+              </ListBoxItem>
             )}
-            <span className="col-start-2">{d.label}</span>
-          </ListBoxItem>
-        )}
-      </ListBox>
+          </ListBox>
+          
+          {/* Add "Connect New Device" button for WebHID when no devices are found */}
+          {webHidTransport && devices.length === 0 && !refreshing && (
+            <div className="mt-4">
+              <p className="text-sm">No devices found. Connect a new device:</p>
+              <button
+                className="mt-2 bg-base-300 hover:bg-primary hover:text-primary-content rounded px-2 py-1"
+                type="button"
+                onClick={async () => {
+                  try {
+                    // Import and call requestDevice from web/hid.ts
+                    const { requestDevice } = await import("./web/hid");
+                    const device = await requestDevice();
+                    if (device) {
+                      // Refresh the device list after requesting a new device
+                      onRefresh();
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    if (e instanceof Error && !(e instanceof UserCancelledError)) {
+                      alert(e.message);
+                    }
+                  }
+                }}
+              >
+                Connect USB-HID Device
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -263,14 +335,8 @@ function connectOptions(
   onTransportCreated: (t: RpcTransport) => void,
   open?: boolean
 ) {
-  const useSimplePicker = useMemo(
-    () => transports.every((t) => !t.pick_and_connect),
-    [transports]
-  );
-
-  return useSimplePicker
-    ? simpleDevicePicker(transports, onTransportCreated)
-    : deviceList(open || false, transports, onTransportCreated);
+  // Always use deviceList to show both direct connection options and discoverable devices
+  return deviceList(open || false, transports, onTransportCreated);
 }
 
 export const ConnectModal = ({

@@ -26,6 +26,7 @@ blocking = "1.6.0"
 tokio-serial = { version ="5.4.1", features = ["libudev"] }
 serialport = "4.5.0"
 tokio = { version = "1.37.0", features = ["io-util"] }
+hidapi = "2.6.0"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

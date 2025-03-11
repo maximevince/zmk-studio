@@ -35,7 +35,7 @@ pub async fn serial_connect(
                 let mut buffer = vec![0; READ_BUF_SIZE];
                 while let Ok(size) = reader.read(&mut buffer).await {
                     if size > 0 {
-                        app_handle.emit("connection_data", &buffer[..size]);
+                        let _ = app_handle.emit("connection_data", &buffer[..size]);
                     } else {
                         break;
                     }
@@ -44,7 +44,7 @@ pub async fn serial_connect(
                 let state = app_handle.state::<super::commands::ActiveConnection>();
                 *state.conn.lock().await = None;
 
-                app_handle.emit("connection_disconnected", ());
+                let _ = app_handle.emit("connection_disconnected", ());
             });
 
             tauri::async_runtime::spawn(async move {

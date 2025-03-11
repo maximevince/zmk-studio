@@ -19,6 +19,17 @@ import {
   connect as tauri_serial_connect,
   list_devices as serial_list_devices,
 } from "./tauri/serial";
+import {
+  connect as tauri_hid_connect,
+  list_devices as hid_list_devices,
+} from "./tauri/hid";
+import {
+  connect as web_hid_connect,
+  list_devices as web_hid_list_devices,
+  isWebHidAvailable,
+  requestDevice
+} from "./web/hid";
+import type { AvailableDevice } from "./tauri/index";
 import Keyboard from "./keyboard/Keyboard";
 import { UndoRedoContext, useUndoRedo } from "./undoRedo";
 import { usePub, useSub } from "./usePubSub";
@@ -41,6 +52,18 @@ const TRANSPORTS: TransportFactory[] = [
   ...(navigator.bluetooth && navigator.userAgent.indexOf("Linux") >= 0
     ? [{ label: "BLE", connect: gatt_connect }]
     : []),
+  // Add WebHID transport if available
+  ...(isWebHidAvailable()
+    ? [
+        {
+          label: "USB-HID (Web)",
+          pick_and_connect: {
+            connect: web_hid_connect,
+            list: web_hid_list_devices,
+          },
+        },
+      ]
+    : []),
   ...(window.__TAURI_INTERNALS__
     ? [
         {
@@ -62,9 +85,54 @@ const TRANSPORTS: TransportFactory[] = [
             list: serial_list_devices,
           },
         },
+        {
+          label: "USB-HID",
+          pick_and_connect: {
+            connect: tauri_hid_connect,
+            list: hid_list_devices,
+          },
+        },
       ]
     : []),
 ].filter((t) => t !== undefined);
+
+// Debug logging
+console.log("Available transports:", TRANSPORTS);
+console.log("WebHID available:", isWebHidAvailable());
+console.log("Navigator HID:", (navigator as any).hid);
+console.log("Is Tauri available:", !!window.__TAURI_INTERNALS__);
+console.log("Is Web Serial available:", !!navigator.serial);
+console.log("Web Serial transport:", navigator.serial && { label: "USB", connect: serial_connect });
+console.log("Tauri Serial transport:", window.__TAURI_INTERNALS__ && {
+  label: "USB",
+  pick_and_connect: {
+    connect: tauri_serial_connect,
+    list: serial_list_devices,
+  },
+});
+
+// Add a global function to test WebHID
+(window as any).testWebHID = async () => {
+  if (isWebHidAvailable()) {
+    try {
+      console.log("Requesting HID device...");
+      const device = await requestDevice();
+      console.log("Device:", device);
+      
+      console.log("Listing HID devices...");
+      const devices = await web_hid_list_devices();
+      console.log("Devices:", devices);
+      
+      return { success: true, device, devices };
+    } catch (error) {
+      console.error("WebHID test error:", error);
+      return { success: false, error };
+    }
+  } else {
+    console.error("WebHID is not available");
+    return { success: false, error: "WebHID is not available" };
+  }
+};
 
 async function listen_for_notifications(
   notification_stream: ReadableStream<Notification>,

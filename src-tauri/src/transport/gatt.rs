@@ -53,7 +53,9 @@ pub async fn gatt_connect(
                     use tauri::Emitter;
 
                     while let Some(Ok(vn)) = n.next().await {
-                        ah1.emit("connection_data", vn.clone());
+                        let vn = Vec::from(vn);
+                        // Emit the data to the frontend
+                        let _ = ah1.emit("connection_data", vn.clone());
                     }
                 }
             });

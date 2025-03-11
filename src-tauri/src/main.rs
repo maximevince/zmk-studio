@@ -9,6 +9,7 @@ mod transport;
 use transport::commands::{transport_close, transport_send_data, ActiveConnection};
 
 use transport::gatt::{gatt_connect, gatt_list_devices};
+use transport::hid::{hid_connect, hid_list_devices};
 use transport::serial::{serial_connect, serial_list_devices};
 
 fn main() {
@@ -24,6 +25,8 @@ fn main() {
             gatt_connect,
             serial_list_devices,
             serial_connect,
+            hid_list_devices,
+            hid_connect,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
