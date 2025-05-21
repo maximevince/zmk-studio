@@ -128,7 +128,7 @@ export async function connect(dev: AvailableDevice): Promise<RpcTransport> {
   const inputReportHandler = (event: HIDInputReportEvent) => {
     if (event.reportId === IN_REPORT_ID) {
       const data = new Uint8Array(event.data.buffer);
-      console.log("Received HID report:", data);
+      // console.log("Received HID report:", data);
       
       // Byte 0 of the payload is the useful length (including report_id, length, and type)
       const usefulLength = data[0];
@@ -136,7 +136,8 @@ export async function connect(dev: AvailableDevice): Promise<RpcTransport> {
       // Byte 1 is the report type
       const reportType = data[1];
       if (reportType !== STUDIO_RPC_TYPE) {
-        console.error("Invalid report type:", reportType);
+        // Ignore other report types - they are not for us
+        //console.error("Invalid report type:", reportType);
         return;
       }
 
@@ -181,7 +182,7 @@ export async function connect(dev: AvailableDevice): Promise<RpcTransport> {
         report.set(data.slice(0, payloadLength), 2);
       }
       
-      console.log("Sending HID report:", report);
+      // console.log("Sending HID report:", report);
       
       // Send the report - always exactly 64 bytes
       await device.sendReport(OUT_REPORT_ID, report);
