@@ -29,7 +29,6 @@ import {
   isWebHidAvailable,
   requestDevice
 } from "./web/hid";
-import type { AvailableDevice } from "./tauri/index";
 import Keyboard from "./keyboard/Keyboard";
 import { UndoRedoContext, useUndoRedo } from "./undoRedo";
 import { usePub, useSub } from "./usePubSub";
